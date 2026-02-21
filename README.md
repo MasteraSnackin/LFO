@@ -52,66 +52,69 @@ flowchart LR
   Router -->|mode: local| Bridge[Android Bridge]
   Bridge --> Mobile[LFO Mobile App]
   Mobile --> Engine[Cactus + FunctionGemma]
-
+```
 
 The system uses a Node.js-based core router to manage request flow between local and cloud providers. Requests are intelligently routed based on token heuristics or explicit metadata, with local traffic forwarded via a dedicated bridge to the mobile inference host.
 
-Installation
-Clone the repository:
+## Installation
 
-bash
-git clone https://github.com/MasteraSnackin/LFO.git
-cd LFO
-Install core dependencies:
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/MasteraSnackin/LFO.git
+   cd LFO
+   ```
 
-bash
-cd lfo-core && npm install
-Configure environment:
+2. **Install core dependencies:**
+   ```bash
+   cd lfo-core && npm install
+   ```
 
-bash
-cp .env.example .env
-# Set at minimum:
-# GEMINI_API_KEY=<your_key>
-# ANDROID_HOST=<device_ip>
-Prepare Android Device:
-Ensure the LFO Mobile App is installed and running on a device within the same LAN.
+3. **Configure environment:**
+   ```bash
+   cp .env.example .env
+   # Set at minimum:
+   # GEMINI_API_KEY=<your_key>
+   # ANDROID_HOST=<device_ip>
+   ```
 
-Usage
-Start the orchestrator:
+4. **Prepare Android Device:**
+   Ensure the LFO Mobile App is installed and running on a device within the same LAN.
 
-bash
+## Usage
+
+**Start the orchestrator:**
+```bash
 npm start
-Execute a hybrid request:
+```
 
-bash
+**Execute a hybrid request:**
+```bash
 curl -X POST http://localhost:8080/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
     "messages": [{"role": "user", "content": "What is 2+2?"}],
     "metadata": {"mode": "auto"}
   }'
-Configuration
-LFO is primarily configured via environment variables in the lfo-core directory:
+```
 
-GEMINI_API_KEY: Required for cloud escalation.
+## Configuration
+LFO is primarily configured via environment variables in the `lfo-core` directory:
 
-PORT: HTTP port for the router (default: 8080).
+- `GEMINI_API_KEY`: Required for cloud escalation.
+- `PORT`: HTTP port for the router (default: `8080`).
+- `ANDROID_HOST`: LAN IP address of the Android inference host.
+- `MAX_LOCAL_TOKENS`: Maximum prompt length for local routing (default: `1500`).
+- `LFO_AUTH_TOKEN`: Optional bearer token for endpoint security.
 
-ANDROID_HOST: LAN IP address of the Android inference host.
+## Screenshots / Demo
+![LFO Dashboard](https://via.placeholder.com/800x400?text=LFO+Dashboard+Interface)
+*The internal dashboard provides visibility into routing decisions, latency, and model confidence scores.*
 
-MAX_LOCAL_TOKENS: Maximum prompt length for local routing (default: 1500).
+## API / CLI Reference
+### `POST /v1/chat/completions`
+Accepts standard OpenAI payloads. Custom routing is controlled via the `metadata` object:
 
-LFO_AUTH_TOKEN: Optional bearer token for endpoint security.
-
-Screenshots / Demo
-LFO Dashboard
-The internal dashboard provides visibility into routing decisions, latency, and model confidence scores.
-
-API / CLI Reference
-POST /v1/chat/completions
-Accepts standard OpenAI payloads. Custom routing is controlled via the metadata object:
-
-json
+```json
 {
   "messages": [...],
   "metadata": {
@@ -119,33 +122,29 @@ json
     "confidence_threshold": 0.7
   }
 }
-Responses include lfo_metadata containing the actual confidence score and the routing_reason.
+```
+Responses include `lfo_metadata` containing the actual `confidence` score and the `routing_reason`.
 
-Tests
+## Tests
 The project uses the built-in Node.js test runner for unit and integration testing.
-
-bash
+```bash
 cd lfo-core && npm test
+```
 The suite includes 45+ tests covering routing logic, circuit breaker states, and error mapping across providers.
 
-Roadmap
- Support for Server-Sent Events (SSE) streaming.
+## Roadmap
+- [ ] Support for Server-Sent Events (SSE) streaming.
+- [ ] Multi-device load balancing for local inference clusters.
+- [ ] Integration with `tiktoken` for precise tokenisation.
+- [ ] Persistent storage for usage statistics and historical performance.
 
- Multi-device load balancing for local inference clusters.
-
- Integration with tiktoken for precise tokenisation.
-
- Persistent storage for usage statistics and historical performance.
-
-Contributing
+## Contributing
 Contributions are welcome via GitHub issues and pull requests. Please ensure all tests pass before submitting changes.
 
-License
-This project is licensed under the MIT License - see the LICENSE file for details.
+## License
+This project is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details.
 
-Contact / Support
-Maintainer: MasteraSnackin
-
-GitHub: MasteraSnackin
-
-Issues: Project Issues
+## Contact / Support
+- **Maintainer**: MasteraSnackin
+- **GitHub**: [MasteraSnackin](https://github.com/MasteraSnackin)
+- **Issues**: [Project Issues](https://github.com/MasteraSnackin/LFO/issues)
