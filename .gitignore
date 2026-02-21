@@ -3,6 +3,9 @@ logs/
 *.log
 npm-debug.log*
 
+# Reference repos (cloned for reference only)
+hackathon-ref/
+
 # Dependencies
 node_modules/
 
