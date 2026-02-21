@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir:*)",
+      "Bash(cmd /c \"dir /s /b C:\\\\Users\\\\first\\\\Desktop\\\\LFO\")",
+      "Bash(cmd /c \"dir C:\\\\Users\\\\first\\\\Desktop\\\\LFO\")",
+      "Bash(npm run type-check:*)",
+      "Bash(npm run build:*)",
+      "Bash(Select-String -Path \"c:\\\\Users\\\\first\\\\Desktop\\\\LFO\\\\Logs\\\\2\\)DEBUG.md\" -Pattern \"37|tests\")",
+      "Bash(Select-Object LineNumber, Line)",
+      "Bash(Head:*)",
+      "Bash(git init:*)"
+    ]
+  }
+}

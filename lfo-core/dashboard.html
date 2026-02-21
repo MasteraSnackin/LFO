@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LFO Dashboard</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0f0f0f;
+      --surface:  #1a1a1a;
+      --border:   #2a2a2a;
+      --text:     #e0e0e0;
+      --muted:    #888888;
+      --green:    #4caf50;
+      --amber:    #ff9800;
+      --red:      #f44336;
+      --accent:   #7c9ef8;
+      --font:     'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    /* ── Status bar ─────────────────────────────────────────────────────── */
+    #status-bar {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      padding: 10px 20px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+    #status-bar .title { color: var(--accent); font-weight: bold; font-size: 14px; }
+    .indicator { display: flex; align-items: center; gap: 6px; }
+    .dot { font-size: 16px; line-height: 1; }
+    .dot.green { color: var(--green); }
+    .dot.amber { color: var(--amber); }
+    .dot.red   { color: var(--red);   }
+    .dot.muted { color: var(--muted); }
+    #uptime { margin-left: auto; color: var(--muted); font-size: 12px; }
+
+    /* ── Stat cards ─────────────────────────────────────────────────────── */
+    #stats-row {
+      display: flex;
+      gap: 1px;
+      background: var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    .stat-card {
+      flex: 1;
+      padding: 10px 16px;
+      background: var(--surface);
+    }
+    .stat-card .label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .stat-card .value { font-size: 18px; font-weight: bold; margin-top: 2px; }
+
+    /* ── Request table ──────────────────────────────────────────────────── */
+    #table-wrap {
+      overflow-x: auto;
+      padding: 0 0 20px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    thead th {
+      padding: 8px 12px;
+      text-align: left;
+      color: var(--muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+      background: var(--bg);
+      position: sticky;
+      top: 0;
+    }
+    tbody tr { border-bottom: 1px solid var(--border); }
+    tbody tr:hover { background: var(--surface); }
+    tbody td {
+      padding: 7px 12px;
+      white-space: nowrap;
+      color: var(--text);
+    }
+
+    /* Latency colour coding */
+    .lat-fast  { color: var(--green); }
+    .lat-med   { color: var(--amber); }
+    .lat-slow  { color: var(--red);   }
+
+    /* Status colour coding */
+    .st-ok     { color: var(--green); }
+    .st-4xx    { color: var(--amber); }
+    .st-5xx    { color: var(--red);   }
+
+    /* Target badge */
+    .badge {
+      display: inline-block;
+      padding: 1px 6px;
+      border-radius: 3px;
+      font-size: 11px;
+    }
+    .badge-local { background: #1a3a1a; color: var(--green); }
+    .badge-cloud { background: #1a1a3a; color: var(--accent); }
+
+    /* Error cell */
+    .err-cell { color: var(--red); max-width: 300px; overflow: hidden; text-overflow: ellipsis; }
+
+    /* Empty state */
+    #empty-row td { color: var(--muted); text-align: center; padding: 40px; }
+
+    /* Poll indicator */
+    #poll-indicator {
+      position: fixed;
+      bottom: 12px;
+      right: 16px;
+      font-size: 11px;
+      color: var(--muted);
+    }
+    #poll-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--muted); margin-right: 5px; vertical-align: middle; }
+    #poll-dot.active { background: var(--green); }
+  </style>
+</head>
+<body>
+
+<!-- Status bar -->
+<div id="status-bar">
+  <span class="title">LFO v0.1.0</span>
+  <span class="indicator"><span class="dot green">●</span> Core</span>
+  <span class="indicator" id="ind-circuit"><span class="dot muted">●</span> Android: —</span>
+  <span class="indicator" id="ind-gemini"><span class="dot muted">●</span> Gemini: —</span>
+  <span id="uptime">uptime: —</span>
+</div>
+
+<!-- Stat cards -->
+<div id="stats-row">
+  <div class="stat-card"><div class="label">Requests</div><div class="value" id="s-total">—</div></div>
+  <div class="stat-card"><div class="label">Local</div><div class="value" id="s-local">—</div></div>
+  <div class="stat-card"><div class="label">Cloud</div><div class="value" id="s-cloud">—</div></div>
+  <div class="stat-card"><div class="label">Errors</div><div class="value" id="s-errors">—</div></div>
+  <div class="stat-card"><div class="label">Avg latency local</div><div class="value" id="s-lat-local">—</div></div>
+  <div class="stat-card"><div class="label">Avg latency cloud</div><div class="value" id="s-lat-cloud">—</div></div>
+  <div class="stat-card"><div class="label">CB trips</div><div class="value" id="s-trips">—</div></div>
+</div>
+
+<!-- Request log table -->
+<div id="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>Time</th>
+        <th>Mode</th>
+        <th>Target</th>
+        <th>Prompt tk</th>
+        <th>Compl tk</th>
+        <th>Latency</th>
+        <th>Status</th>
+        <th>Error</th>
+      </tr>
+    </thead>
+    <tbody id="req-tbody">
+      <tr id="empty-row"><td colspan="8">No requests yet — waiting for activity</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- Poll indicator -->
+<div id="poll-indicator"><span id="poll-dot"></span><span id="poll-label">polling</span></div>
+
+<script>
+  const POLL_MS = 3000;
+
+  function fmtUptime(ms) {
+    const s = Math.floor(ms / 1000);
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const sec = s % 60;
+    return [h, m, sec].map(v => String(v).padStart(2, '0')).join(':');
+  }
+
+  function fmtRelative(isoTs) {
+    const diffS = Math.floor((Date.now() - new Date(isoTs).getTime()) / 1000);
+    if (diffS < 60)  return diffS + 's ago';
+    if (diffS < 3600) return Math.floor(diffS / 60) + 'm ago';
+    return Math.floor(diffS / 3600) + 'h ago';
+  }
+
+  function latClass(ms) {
+    if (ms < 1000) return 'lat-fast';
+    if (ms < 5000) return 'lat-med';
+    return 'lat-slow';
+  }
+
+  function stClass(code) {
+    if (code < 400) return 'st-ok';
+    if (code < 500) return 'st-4xx';
+    return 'st-5xx';
+  }
+
+  function circuitDot(state) {
+    if (state === 'CLOSED')    return ['green', 'CLOSED'];
+    if (state === 'HALF_OPEN') return ['amber', 'HALF_OPEN'];
+    if (state === 'OPEN')      return ['red',   'OPEN'];
+    return ['muted', state || '—'];
+  }
+
+  function geminiDot(status) {
+    if (status === 'ok')      return ['green', 'ok'];
+    if (status === 'error')   return ['red',   'error'];
+    return ['muted', 'unknown'];
+  }
+
+  function errorPct(errors, total) {
+    if (total === 0) return '0%';
+    return (errors / total * 100).toFixed(1) + '%';
+  }
+
+  function render(data) {
+    // Status bar
+    const [cdot, clabel] = circuitDot(data.status.circuit_state);
+    const indCircuit = document.getElementById('ind-circuit');
+    indCircuit.innerHTML = `<span class="dot ${cdot}">●</span> Android: ${clabel}`;
+
+    const [gdot, glabel] = geminiDot(data.status.gemini_last_status);
+    const indGemini = document.getElementById('ind-gemini');
+    indGemini.innerHTML = `<span class="dot ${gdot}">●</span> Gemini: ${glabel}`;
+
+    document.getElementById('uptime').textContent = 'uptime: ' + fmtUptime(data.status.uptime_ms);
+
+    // Stat cards
+    const t = data.totals;
+    document.getElementById('s-total').textContent   = t.requests;
+    document.getElementById('s-local').textContent   = t.local + ' (' + (t.requests > 0 ? Math.round(t.local / t.requests * 100) : 0) + '%)';
+    document.getElementById('s-cloud').textContent   = t.cloud + ' (' + (t.requests > 0 ? Math.round(t.cloud / t.requests * 100) : 0) + '%)';
+    document.getElementById('s-errors').textContent  = t.errors + ' (' + errorPct(t.errors, t.requests) + ')';
+    document.getElementById('s-lat-local').textContent = t.avg_latency_local_ms > 0 ? t.avg_latency_local_ms + 'ms' : '—';
+    document.getElementById('s-lat-cloud').textContent = t.avg_latency_cloud_ms > 0 ? t.avg_latency_cloud_ms + 'ms' : '—';
+    document.getElementById('s-trips').textContent   = t.circuit_trips;
+
+    // Request table
+    const tbody = document.getElementById('req-tbody');
+    if (!data.recent || data.recent.length === 0) {
+      tbody.innerHTML = '<tr id="empty-row"><td colspan="8">No requests yet — waiting for activity</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = data.recent.map(r => {
+      const targetBadge = r.target === 'local'
+        ? '<span class="badge badge-local">local</span>'
+        : '<span class="badge badge-cloud">cloud</span>';
+      const latency = `<span class="${latClass(r.latency_ms)}">${r.latency_ms}ms</span>`;
+      const status  = `<span class="${stClass(r.status)}">${r.status}</span>`;
+      const errCell = r.error
+        ? `<span class="err-cell" title="${r.error.replace(/"/g, '&quot;')}">${r.error.slice(0, 60)}${r.error.length > 60 ? '…' : ''}</span>`
+        : '';
+      return `<tr>
+        <td title="${r.ts}">${fmtRelative(r.ts)}</td>
+        <td>${r.mode}</td>
+        <td>${targetBadge}</td>
+        <td>${r.prompt_tokens}</td>
+        <td>${r.completion_tokens}</td>
+        <td>${latency}</td>
+        <td>${status}</td>
+        <td>${errCell}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  async function poll() {
+    const dot = document.getElementById('poll-dot');
+    dot.classList.add('active');
+    try {
+      const res = await fetch('/dashboard/api/stats');
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      render(data);
+      document.getElementById('poll-label').textContent = 'last update: ' + new Date().toLocaleTimeString();
+    } catch (e) {
+      document.getElementById('poll-label').textContent = 'poll error — retrying';
+    } finally {
+      dot.classList.remove('active');
+    }
+  }
+
+  poll();
+  setInterval(poll, POLL_MS);
+</script>
+</body>
+</html>
